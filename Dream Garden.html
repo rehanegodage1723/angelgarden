@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Angel's Dream Garden 💗</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden}
+body{
+  font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
+  background:#dff6e7;color:#69364f;
+  touch-action:manipulation;
+}
+canvas{position:fixed;inset:0;width:100%;height:100%}
+#hud{
+ position:fixed;top:0;left:0;width:100%;padding:12px;
+ display:flex;justify-content:space-between;align-items:center;
+ pointer-events:none;z-index:5
+}
+.badge{
+ background:rgba(255,255,255,.86);border:2px solid #fff;
+ padding:9px 13px;border-radius:999px;font-weight:800;
+ box-shadow:0 5px 20px #7c466326;backdrop-filter:blur(8px)
+}
+#tools{
+ position:fixed;left:50%;bottom:14px;transform:translateX(-50%);
+ width:min(96vw,620px);display:flex;gap:7px;justify-content:center;
+ flex-wrap:wrap;z-index:6
+}
+.tool{
+ border:2px solid #fff;background:#fff9fc;color:#713b58;
+ border-radius:18px;padding:10px 12px;font-size:14px;font-weight:800;
+ box-shadow:0 5px 16px #71405c20;cursor:pointer
+}
+.tool.active{background:#ff78ae;color:white;transform:translateY(-2px)}
+#hint{
+ position:fixed;top:58px;left:50%;transform:translateX(-50%);
+ width:max-content;max-width:90vw;text-align:center;
+ background:#ffffffc9;padding:8px 15px;border-radius:14px;
+ font-weight:700;z-index:5;box-shadow:0 5px 15px #71405c18
+}
+#modal{
+ display:none;position:fixed;inset:0;z-index:20;place-items:center;
+ background:#63374d55;backdrop-filter:blur(5px);padding:20px
+}
+.card{
+ width:min(440px,94vw);background:#fff8fc;border:3px solid white;
+ border-radius:30px;padding:28px 22px;text-align:center;
+ box-shadow:0 25px 70px #48223855
+}
+.card h1{margin:0 0 8px;font-size:31px}
+.card p{line-height:1.6;margin:10px 0 20px}
+#close{border:0;border-radius:999px;padding:13px 25px;background:#ff69a5;color:#fff;font-weight:900;font-size:16px}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div id="hud">
+  <div class="badge">🌸 Garden: <span id="progress">0</span>/8</div>
+  <div class="badge">💗 <span id="love">0</span>%</div>
+</div>
+<div id="hint">Choose something below, then tap the garden ✨</div>
+
+<div id="tools">
+ <button class="tool" data-tool="flower">🌷 Plant Flower</button>
+ <button class="tool" data-tool="tree">🌳 Grow Tree</button>
+ <button class="tool" data-tool="bench">🪑 Add Bench</button>
+ <button class="tool" data-tool="house">🏡 Cottage</button>
+ <button class="tool" data-tool="butterfly">🦋 Butterfly</button>
+ <button class="tool" data-tool="light">✨ Fairy Lights</button>
+ <button class="tool" data-tool="pond">💧 Little Pond</button>
+ <button class="tool" data-tool="finish">💌 Secret</button>
+</div>
+
+<div id="modal">
+ <div class="card">
+  <h1>Angel's Dream Garden 💗</h1>
+  <p id="final"></p>
+  <button id="close">🌸 Keep My Garden</button>
+ </div>
+</div>
+
+<script>
+const cv=document.getElementById("c"),ctx=cv.getContext("2d");
+let W,H,DPR,items=[],tool="flower",love=0,finished=false;
+const $=id=>document.getElementById(id);
+
+function resize(){
+ DPR=Math.min(devicePixelRatio||1,2);W=innerWidth;H=innerHeight;
+ cv.width=W*DPR;cv.height=H*DPR;cv.style.width=W+"px";cv.style.height=H+"px";
+ ctx.setTransform(DPR,0,0,DPR,0,0);draw();
+}
+addEventListener("resize",resize);
+
+const colors=["#ff83b5","#ffb1d0","#ffd36e","#b98cff","#82d9ff","#ff8e83"];
+
+function ground(){
+ let g=ctx.createLinearGradient(0,0,0,H);
+ g.addColorStop(0,"#ffe4f0");g.addColorStop(.46,"#fff3f8");g.addColorStop(.47,"#ccefd5");g.addColorStop(1,"#8ed29e");
+ ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+ // hills
+ ctx.fillStyle="#a9dfa9";ctx.beginPath();ctx.moveTo(0,H*.52);
+ ctx.quadraticCurveTo(W*.2,H*.40,W*.42,H*.54);
+ ctx.quadraticCurveTo(W*.68,H*.38,W,H*.51);ctx.lineTo(W,H);ctx.lineTo(0,H);ctx.fill();
+ // sun
+ ctx.fillStyle="#ffe18b";ctx.beginPath();ctx.arc(W-55,82,30,0,Math.PI*2);ctx.fill();
+ // clouds
+ ctx.fillStyle="#fff";[[70,105],[W*.48,80],[W*.78,145]].forEach(([x,y])=>{
+   ctx.globalAlpha=.55;ctx.beginPath();ctx.arc(x,y,22,0,7);ctx.arc(x+25,y+5,18,0,7);ctx.arc(x-22,y+8,17,0,7);ctx.fill();ctx.globalAlpha=1;
+ });
+}
+
+function flower(x,y){
+ const col=colors[Math.floor(Math.random()*colors.length)];
+ ctx.strokeStyle="#4e9f61";ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(x,y+12);ctx.lineTo(x,y-4);ctx.stroke();
+ for(let a=0;a<6;a++){let ang=a*Math.PI/3;ctx.fillStyle=col;ctx.beginPath();ctx.arc(x+Math.cos(ang)*8,y-8+Math.sin(ang)*8,6,0,7);ctx.fill()}
+ ctx.fillStyle="#ffd45f";ctx.beginPath();ctx.arc(x,y-8,5,0,7);ctx.fill();
+}
+
+function tree(x,y){
+ ctx.fillStyle="#87553d";ctx.fillRect(x-9,y-65,18,70);
+ [[0,-76],[-27,-58],[25,-56],[0,-43]].forEach(([dx,dy])=>{
+   ctx.fillStyle="#68bd77";ctx.beginPath();ctx.arc(x+dx,y+dy,29,0,7);ctx.fill();
+ });
+}
+
+function bench(x,y){
+ ctx.fillStyle="#9a6243";ctx.fillRect(x-35,y-18,70,10);ctx.fillRect(x-31,y-32,62,10);
+ ctx.fillRect(x-28,y-8,7,25);ctx.fillRect(x+21,y-8,7,25);
+}
+
+function house(x,y){
+ ctx.fillStyle="#fff0f5";ctx.fillRect(x-63,y-75,126,75);
+ ctx.fillStyle="#e96e9f";ctx.beginPath();ctx.moveTo(x-78,y-75);ctx.lineTo(x,y-135);ctx.lineTo(x+78,y-75);ctx.closePath();ctx.fill();
+ ctx.fillStyle="#9b5c72";ctx.fillRect(x-14,y-45,28,45);
+ ctx.fillStyle="#9fe0ee";ctx.fillRect(x-48,y-48,24,22);ctx.fillRect(x+24,y-48,24,22);
+ ctx.fillStyle="#ffd86b";ctx.beginPath();ctx.arc(x,y-26,5,0,7);ctx.fill();
+}
+
+function pond(x,y){
+ ctx.fillStyle="#70cfee";ctx.beginPath();ctx.ellipse(x,y,68,34,0,0,7);ctx.fill();
+ ctx.fillStyle="#b7edff";ctx.beginPath();ctx.ellipse(x-18,y-8,24,8,0,0,7);ctx.fill();
+ ctx.fillStyle="#69bd72";ctx.beginPath();ctx.arc(x+42,y-18,12,0,7);ctx.fill();
+}
+
+function butterfly(x,y,t){
+ ctx.save();ctx.translate(x,y);ctx.rotate(Math.sin(t/300)*.15);
+ ctx.fillStyle="#ff8fbd";ctx.beginPath();ctx.ellipse(-8,-5,10,15,-.4,0,7);ctx.ellipse(8,-5,10,15,.4,0,7);ctx.fill();
+ ctx.fillStyle="#75425c";ctx.fillRect(-2,-8,4,18);
+ ctx.restore();
+}
+
+function lights(t){
+ for(let i=0;i<12;i++){
+   let x=30+i*(W-60)/11,y=H*.28+Math.sin(i*1.3)*20;
+   ctx.strokeStyle="#9f6a80";ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(x,y-12);ctx.lineTo(x,y);ctx.stroke();
+   ctx.fillStyle=`hsl(${35+i*18},90%,70%)`;ctx.beginPath();ctx.arc(x,y+3,5+Math.sin(t/200+i)*1.5,0,7);ctx.fill();
+ }
+}
+
+function draw(){
+ ground();let t=performance.now();
+ if(items.some(o=>o.type==="light"))lights(t);
+ items.forEach(o=>{
+  if(o.type==="flower")flower(o.x,o.y);
+  if(o.type==="tree")tree(o.x,o.y);
+  if(o.type==="bench")bench(o.x,o.y);
+  if(o.type==="house")house(o.x,o.y);
+  if(o.type==="pond")pond(o.x,o.y);
+  if(o.type==="butterfly")butterfly(o.x,o.y,t);
+ });
+ // tiny floating sparkles
+ if(items.length){
+  ctx.font="18px serif";ctx.globalAlpha=.6;
+  for(let i=0;i<5;i++){
+   let x=(i*97+t/25)%W,y=H*.25+Math.sin(t/900+i)*80;
+   ctx.fillText("✦",x,y);
+  }
+  ctx.globalAlpha=1;
+ }
+ requestAnimationFrame(draw);
+}
+
+function update(){
+ $("progress").textContent=Math.min(items.length,8);
+ $("love").textContent=Math.min(love,100);
+ if(items.length<8)$("hint").textContent="Keep decorating Angel's little garden 🌸";
+ else $("hint").textContent="The garden is blooming! Tap 💌 Secret ✨";
+}
+function addItem(x,y){
+ if(tool==="finish"){finish();return}
+ if(items.length>=8){$("hint").textContent="Your garden is complete, Angel! 💗";return}
+ // keep objects in the garden area and avoid UI
+ y=Math.max(190,Math.min(H-115,y));
+ x=Math.max(75,Math.min(W-75,x));
+ const same=items.filter(o=>o.type===tool).length;
+ const limits={flower:4,tree:1,bench:1,house:1,butterfly:3,light:1,pond:1};
+ if(same>=(limits[tool]||1)){
+   $("hint").textContent="You've added enough of that one! Try another 🌷";return;
+ }
+ items.push({type:tool,x,y});love=Math.min(100,love+12);
+ update();
+ const phrases={
+  flower:"A flower for my beautiful Angel 🌷",
+  tree:"A tree where our little memories can grow 🌳",
+  bench:"A cozy place for us to sit together 🥹",
+  house:"A tiny dream home for two hearts 🏡",
+  butterfly:"A little butterfly came to visit 🦋",
+  light:"Now the garden has magical lights ✨",
+  pond:"A peaceful little pond 💧"
+ };
+ $("hint").textContent=phrases[tool];
+}
+function finish(){
+ if(items.length<5){
+  $("hint").textContent="Add at least 5 things before opening the secret 💌";return;
+ }
+ $("final").innerHTML=
+ `You built a tiny world for <b>Angel</b> with your own hands. 🌸<br><br>
+ Every flower is a little “I love you,” every light is a little “I’m thinking of you,”
+ and this garden is a tiny place where your hearts can always meet. 💗<br><br>
+ <b>“No matter how far apart we are, you will always have a beautiful little garden in my heart.” 🥹🌷</b>`;
+ $("modal").style.display="grid";finished=true;
+}
+document.querySelectorAll(".tool").forEach(b=>{
+ b.addEventListener("click",()=>{
+   tool=b.dataset.tool;
+   document.querySelectorAll(".tool").forEach(x=>x.classList.remove("active"));
+   b.classList.add("active");
+   $("hint").textContent=tool==="finish"?"Tap the garden to open your secret message 💌":"Now tap anywhere in the garden ✨";
+ });
+});
+cv.addEventListener("pointerdown",e=>addItem(e.clientX,e.clientY));
+$("close").onclick=()=>{$("modal").style.display="none";$("hint").textContent="Your garden is yours forever, Angel 🌸💗"};
+document.querySelector('[data-tool="flower"]').classList.add("active");
+resize();update();
+</script>
+</body>
+</html>
